@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hello Sparta!!!</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
+    <style>
+        .vertical-center {
+            min-height: 100%;
+            min-height: 100vh;
+
+            display: flex;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+<div class="vertical-center">
+    <div class="container">
+        <form method="post" onsubmit="return onLogin(this)" id="loginForm">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" class="form-control" id="username" name="username">
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="password" name="password">
+            </div>
+            <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+        <fieldset disabled>
+            <div class="mb-3" style="margin-top: 100px">
+                <label for="access-token" class="form-label">Access Token</label>
+                <input type="text" class="form-control" id="access-token">
+            </div>
+            <div class="mb-3">
+                <label for="refresh-token" class="form-label">Refresh Token</label>
+                <input type="text" class="form-control" id="refresh-token">
+            </div>
+            <div class="mb-3">
+                <label for="payload" class="form-label">Payload</label>
+                <input type="text" class="form-control" id="payload">
+            </div>
+        </fieldset>
+        <div class="row g-3 align-items-center">
+            <div class="col-auto">
+                <label for="auth-only" class="col-form-label">인증된 사용자만 볼 수 있는 데이터!</label>
+            </div>
+            <div class="col-auto">
+                <input type="text" id="auth-only" class="form-control" disabled>
+            </div>
+            <div class="col-auto">
+                <button id="btn_request" class="btn btn-primary" onclick="onRequestButtonClick()">
+                    Request Auth Only Data
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-pprn3073KE6tl6bjs2QrFaJGz5/SUsLqktiwsUTF55Jfv3qYSDhgCecCxMW52nD2"
+        crossorigin="anonymous"></script>
+<script>
+    const onLogin = (e) => {
+        const requestAccessToken = async (url, sendData) => {
+            const response = await fetch(url, {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                method: "POST",
+                body: JSON.stringify(sendData)
+            });
+
+            return response.json();
+        };
+
+        const data = new FormData(e);
+        const loginInfo = {
+            "username": data.get("username"),
+            "password": data.get("password")
+        };
+
+        requestAccessToken("/user/api/token/", loginInfo).then((data => {
+
+            const accessToken = data.access;
+            const refreshToken = data.refresh;
+            document.querySelector("#access-token").value = accessToken;
+            document.querySelector("#refresh-token").value = refreshToken;
+
+            // 서버로 부터 응답받은 accessToken과 refreshToken, payload 저장
+
+            localStorage.setItem("sparta_access_token", accessToken);
+            localStorage.setItem("sparta_refresh_token", refreshToken);
+
+            // 0 -> header, 1 -> payload, 2 -> VERIFY SIGNATURE
+            const base64Url = accessToken.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+
+            document.querySelector("#payload").value = jsonPayload;
+
+            localStorage.setItem("payload", jsonPayload);
+        }));
+        return false;
+    };
+</script>
+</body>
+</html>
